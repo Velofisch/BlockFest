@@ -1,20 +1,22 @@
 contract Daisee {
-
     Usager[] public usagers;
+    // temps artificiel - pour chaque cycle le temps artificiel est augmenté
     uint public currentTime;
-    uint prixKwh;
 
     /* Usagers */
     struct Usager {
         address addr;
+        // consomation et production en kwh
         uint[] conso;
         uint[] prod;
-        uint[] disponible;
-
+    
         string nom;
+        // somme des unités vendues ou achetés entre la communauté
         uint credit;
+        // somme des unités achetés et vendue de l'EDF
         uint achatEDF;
         uint venteEDF;
+        // temps artificiel des dernier données d'un usager
         uint temps;
     }
 
@@ -26,45 +28,30 @@ contract Daisee {
     }
 
 
-    function () {
-        bool trouve=false;
-
-        for (uint i = 0; i < usagers.length; ++i) {
-            if(usagers[i].addr == msg.sender){
-                usagers[i].credit = usagers[i].credit + msg.value;
-                trouve=true;
-            }
-        }
-        if(trouve){
-
-        }else {
-            throw;
-        }
-
-    }
-
-    function sajouterUsager(
-        string name
-        ) {
+    function sajouterUsager(string name) {
         Usager nouvelUsager = anusager;
         nouvelUsager.nom = name;
-        nouvelUsager.credit = msg.value;
+        nouvelUsager.credit = 0;
         nouvelUsager.addr = msg.sender;
 
-
+        // initialiser le nouvel usager
         usagers[usagers.length++] = nouvelUsager;
 
+        // remettre les anciens cycle de l'usager à zero
         // {addr: msg.sender, credit: msg.value, nom: name, conso:[0], prod: [0], disponible:[0]}
         for (uint i = 0; i < currentTime; ++i) {
             usagers[usagers.length].conso[i]=0;
             usagers[usagers.length].prod[i]=0;
             usagers[usagers.length].disponible[i]=0;
         }
+        // le nouvel usager n'a pas encore livré des données pour le cycle actuel -> temps < currentTime
         usagers[usagers.length].temps=currentTime-1;
+        // la facture EDF est zero
         usagers[usagers.length].achatEDF=0;
         usagers[usagers.length].venteEDF=0;
     }
 
+    // function qui met les données d'un usager - à utiliser à partir des rasberries
     function publier(uint consoActuelle, uint prodActuelle) {
         uint prodDiff = prodActuelle - consoActuelle;
         // address vendeut - ça devrait être un mapping
@@ -77,10 +64,13 @@ contract Daisee {
         }
     }
 
+    // function qui fait le calcul pour un cycle
     function nextTime() {
+        // calculer les chiffres totals. Est-ce qu'il y a trop d'energie ou un manque d'energie?
         uint dispoTot=0;
         uint desireeTot=0;
 
+        // Un loop sur tous les usagers qui ont participer au cycle actuel pour calculer le total
         for (uint i = 0; i < usagers.length; ++i) {
             if(usagers[i].temps == currentTime){
                 if(usagers[i].prod[currentTime]>usagers[i].conso[currentTime]){
